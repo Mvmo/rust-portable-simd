@@ -271,7 +271,6 @@ pub impl(self) trait SimdFloat: Copy {
     fn algebraic_rem(self, rhs: Self) -> Self;
 }
 
-
 macro_rules! impl_trait {
     { $($ty:ty { bits: $bits_ty:ty, mask: $mask_ty:ty }),* } => {
         $(
