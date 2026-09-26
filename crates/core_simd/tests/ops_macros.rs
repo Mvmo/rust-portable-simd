@@ -728,45 +728,122 @@ macro_rules! impl_float_tests {
                 }
 
                 fn algebraic_add<const LANES: usize>() {
-                    test_helpers::test_1(&|x: [Scalar; LANES]| {
-                        let v = Vector::<LANES>::from_array(x);
-                        let r = v.algebraic_add(v);
-                        if x.iter().all(|v| v.is_finite()) {
+                    test_helpers::test_2(&|x: [Scalar; LANES], y: [Scalar; LANES]| {
+                        let r = Vector::<LANES>::from_array(x).algebraic_add(Vector::<LANES>::from_array(y));
+                        if x.iter().chain(y.iter()).all(|v| v.is_finite()) {
                             proptest::prop_assert!(!r.as_array().iter().any(|v| v.is_nan()));
                         }
                         Ok(())
                     });
+
+                    let zero = Vector::<LANES>::splat(0.0);
+                    let one = Vector::<LANES>::splat(1.0);
+                    let neg_one = Vector::<LANES>::splat(-1.0);
+                    let max = Vector::<LANES>::splat(Scalar::MAX);
+                    let min = Vector::<LANES>::splat(Scalar::MIN);
+
+                    assert!(!max.algebraic_add(zero).as_array().iter().any(|v| v.is_nan()));
+                    assert!(!min.algebraic_add(zero).as_array().iter().any(|v| v.is_nan()));
+                    assert!(!max.algebraic_add(one).as_array().iter().any(|v| v.is_nan()));
+                    assert!(!min.algebraic_add(neg_one).as_array().iter().any(|v| v.is_nan()));
+                    assert!(!max.algebraic_add(max).as_array().iter().any(|v| v.is_nan()));
+                    assert!(!min.algebraic_add(min).as_array().iter().any(|v| v.is_nan()));
+                    assert!(!one.algebraic_add(neg_one).as_array().iter().any(|v| v.is_nan()));
                 }
 
                 fn algebraic_sub<const LANES: usize>() {
-                    test_helpers::test_1(&|x: [Scalar; LANES]| {
-                        let v = Vector::<LANES>::from_array(x);
-                        let r = v.algebraic_sub(v);
-                        if x.iter().all(|v| v.is_finite()) {
+                    test_helpers::test_2(&|x: [Scalar; LANES], y: [Scalar; LANES]| {
+                        let r = Vector::<LANES>::from_array(x).algebraic_sub(Vector::<LANES>::from_array(y));
+                        if x.iter().chain(y.iter()).all(|v| v.is_finite()) {
                             proptest::prop_assert!(!r.as_array().iter().any(|v| v.is_nan()));
                         }
                         Ok(())
                     });
+
+                    let zero = Vector::<LANES>::splat(0.0);
+                    let one = Vector::<LANES>::splat(1.0);
+                    let neg_one = Vector::<LANES>::splat(-1.0);
+                    let max = Vector::<LANES>::splat(Scalar::MAX);
+                    let min = Vector::<LANES>::splat(Scalar::MIN);
+
+                    assert!(!max.algebraic_sub(zero).as_array().iter().any(|v| v.is_nan()));
+                    assert!(!min.algebraic_sub(zero).as_array().iter().any(|v| v.is_nan()));
+                    assert!(!max.algebraic_sub(one).as_array().iter().any(|v| v.is_nan()));
+                    assert!(!min.algebraic_sub(neg_one).as_array().iter().any(|v| v.is_nan()));
+                    assert!(!max.algebraic_sub(min).as_array().iter().any(|v| v.is_nan()));
+                    assert!(!one.algebraic_sub(neg_one).as_array().iter().any(|v| v.is_nan()));
                 }
 
                 fn algebraic_mul<const LANES: usize>() {
-                    test_helpers::test_1(&|x: [Scalar; LANES]| {
-                        let v = Vector::<LANES>::from_array(x);
-                        let r = v.algebraic_mul(v);
+                    test_helpers::test_2(&|x: [Scalar; LANES], y: [Scalar; LANES]| {
+                        let r = Vector::<LANES>::from_array(x).algebraic_mul(Vector::<LANES>::from_array(y));
+                        if x.iter().chain(y.iter()).all(|v| v.is_finite()) {
+                            proptest::prop_assert!(!r.as_array().iter().any(|v| v.is_nan()));
+                        }
+                        Ok(())
+                    });
+
+                    let zero = Vector::<LANES>::splat(0.0);
+                    let one = Vector::<LANES>::splat(1.0);
+                    let neg_one = Vector::<LANES>::splat(-1.0);
+                    let max = Vector::<LANES>::splat(Scalar::MAX);
+                    let min = Vector::<LANES>::splat(Scalar::MIN);
+
+                    assert!(!max.algebraic_mul(one).as_array().iter().any(|v| v.is_nan()));
+                    assert!(!max.algebraic_mul(neg_one).as_array().iter().any(|v| v.is_nan()));
+                    assert!(!max.algebraic_mul(zero).as_array().iter().any(|v| v.is_nan()));
+                    assert!(!min.algebraic_mul(one).as_array().iter().any(|v| v.is_nan()));
+                    assert!(!min.algebraic_mul(neg_one).as_array().iter().any(|v| v.is_nan()));
+                    assert!(!max.algebraic_mul(max).as_array().iter().any(|v| v.is_nan()));
+                    assert!(!zero.algebraic_mul(zero).as_array().iter().any(|v| v.is_nan()));
+                }
+
+                fn algebraic_div<const LANES: usize>() {
+                    test_helpers::test_2(&|x: [Scalar; LANES], y: [Scalar; LANES]| {
+                        proptest::prop_assume!(y.iter().all(|v| v.is_finite() && *v != 0.0));
+                        let r = Vector::<LANES>::from_array(x).algebraic_div(Vector::<LANES>::from_array(y));
                         if x.iter().all(|v| v.is_finite()) {
                             proptest::prop_assert!(!r.as_array().iter().any(|v| v.is_nan()));
                         }
                         Ok(())
                     });
-                }
 
-                fn algebraic_div<const LANES: usize>() {
-                    let _ = Vector::<LANES>::splat(2.0).algebraic_div(Vector::<LANES>::splat(2.0));
+                    let zero = Vector::<LANES>::splat(0.0);
+                    let one = Vector::<LANES>::splat(1.0);
+                    let neg_one = Vector::<LANES>::splat(-1.0);
+                    let max = Vector::<LANES>::splat(Scalar::MAX);
+                    let min = Vector::<LANES>::splat(Scalar::MIN);
+
+                    assert!(!max.algebraic_div(one).as_array().iter().any(|v| v.is_nan()));
+                    assert!(!max.algebraic_div(neg_one).as_array().iter().any(|v| v.is_nan()));
+                    assert!(!min.algebraic_div(one).as_array().iter().any(|v| v.is_nan()));
+                    assert!(!min.algebraic_div(neg_one).as_array().iter().any(|v| v.is_nan()));
+                    assert!(!zero.algebraic_div(one).as_array().iter().any(|v| v.is_nan()));
+                    assert!(!zero.algebraic_div(max).as_array().iter().any(|v| v.is_nan()));
+                    assert!(!one.algebraic_div(max).as_array().iter().any(|v| v.is_nan()));
                 }
 
                 fn algebraic_rem<const LANES: usize>() {
-                    let _ = Vector::<LANES>::splat(2.0).algebraic_rem(Vector::<LANES>::splat(2.0));
+                    test_helpers::test_2(&|x: [Scalar; LANES], y: [Scalar; LANES]| {
+                        proptest::prop_assume!(y.iter().all(|v| v.is_finite() && *v != 0.0));
+                        let r = Vector::<LANES>::from_array(x).algebraic_rem(Vector::<LANES>::from_array(y));
+                        if x.iter().all(|v| v.is_finite()) {
+                            proptest::prop_assert!(!r.as_array().iter().any(|v| v.is_nan()));
+                        }
+                        Ok(())
+                    });
+
+                    let one = Vector::<LANES>::splat(1.0);
+                    let neg_one = Vector::<LANES>::splat(-1.0);
+                    let max = Vector::<LANES>::splat(Scalar::MAX);
+                    let min = Vector::<LANES>::splat(Scalar::MIN);
+
+                    assert!(!max.algebraic_rem(one).as_array().iter().any(|v| v.is_nan()));
+                    assert!(!min.algebraic_rem(one).as_array().iter().any(|v| v.is_nan()));
+                    assert!(!max.algebraic_rem(neg_one).as_array().iter().any(|v| v.is_nan()));
+                    assert!(!one.algebraic_rem(max).as_array().iter().any(|v| v.is_nan()));
                 }
+
             }
 
             #[cfg(feature = "std")]
