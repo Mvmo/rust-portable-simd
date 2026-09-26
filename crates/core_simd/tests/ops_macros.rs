@@ -726,6 +726,46 @@ macro_rules! impl_float_tests {
                         Ok(())
                     });
                 }
+
+                fn algebraic_add<const LANES: usize>() {
+                    test_helpers::test_binary_elementwise_flush_subnormals(
+                        &Vector::<LANES>::algebraic_add,
+                        &|a, b| a + b,
+                        &|_, _| true,
+                    );
+                }
+
+                fn algebraic_sub<const LANES: usize>() {
+                    test_helpers::test_binary_elementwise_flush_subnormals(
+                        &Vector::<LANES>::algebraic_sub,
+                        &|a, b| a - b,
+                        &|_, _| true,
+                    );
+                }
+
+                fn algebraic_mul<const LANES: usize>() {
+                    test_helpers::test_binary_elementwise_flush_subnormals(
+                        &Vector::<LANES>::algebraic_mul,
+                        &|a, b| a * b,
+                        &|_, _| true,
+                    );
+                }
+
+                fn algebraic_div<const LANES: usize>() {
+                    test_helpers::test_binary_elementwise_flush_subnormals(
+                        &Vector::<LANES>::algebraic_div,
+                        &|a, b| a / b,
+                        &|_, _| true,
+                    );
+                }
+
+                fn algebraic_rem<const LANES: usize>() {
+                    test_helpers::test_binary_elementwise_flush_subnormals(
+                        &Vector::<LANES>::algebraic_rem,
+                        &|a, b| a % b,
+                        &|_, _| true,
+                    );
+                }
             }
 
             #[cfg(feature = "std")]

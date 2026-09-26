@@ -234,7 +234,43 @@ pub impl(self) trait SimdFloat: Copy {
     /// assert!(v.reduce_min().is_nan());
     /// ```
     fn reduce_min(self) -> Self::Scalar;
+
+    /// Float addition that allows optimizations based on algebraic rules.
+    ///
+    /// See [algebraic operators](https://doc.rust-lang.org/std/primitive.f32.html#algebraic-operators)
+    /// for more info.
+    #[must_use = "method returns a new vector and does not mutate the original value"]
+    fn algebraic_add(self, rhs: Self) -> Self;
+
+    /// Float subtraction that allows optimizations based on algebraic rules.
+    ///
+    /// See [algebraic operators](https://doc.rust-lang.org/std/primitive.f32.html#algebraic-operators)
+    /// for more info.
+    #[must_use = "method returns a new vector and does not mutate the original value"]
+    fn algebraic_sub(self, rhs: Self) -> Self;
+
+    /// Float multiplication that allows optimizations based on algebraic rules.
+    ///
+    /// See [algebraic operators](https://doc.rust-lang.org/std/primitive.f32.html#algebraic-operators)
+    /// for more info.
+    #[must_use = "method returns a new vector and does not mutate the original value"]
+    fn algebraic_mul(self, rhs: Self) -> Self;
+
+    /// Float division that allows optimizations based on algebraic rules.
+    ///
+    /// See [algebraic operators](https://doc.rust-lang.org/std/primitive.f32.html#algebraic-operators)
+    /// for more info.
+    #[must_use = "method returns a new vector and does not mutate the original value"]
+    fn algebraic_div(self, rhs: Self) -> Self;
+
+    /// Float remainder that allows optimizations based on algebraic rules.
+    ///
+    /// See [algebraic operators](https://doc.rust-lang.org/std/primitive.f32.html#algebraic-operators)
+    /// for more info.
+    #[must_use = "method returns a new vector and does not mutate the original value"]
+    fn algebraic_rem(self, rhs: Self) -> Self;
 }
+
 
 macro_rules! impl_trait {
     { $($ty:ty { bits: $bits_ty:ty, mask: $mask_ty:ty }),* } => {
@@ -404,6 +440,41 @@ macro_rules! impl_trait {
             }
 
             #[inline]
+            fn algebraic_add(self, rhs: Self) -> Self {
+                let a = self.to_array();
+                let b = rhs.to_array();
+                Self::from_array(core::array::from_fn(|i| core::intrinsics::fadd_algebraic(a[i], b[i])))
+            }
+
+            #[inline]
+            fn algebraic_sub(self, rhs: Self) -> Self {
+                let a = self.to_array();
+                let b = rhs.to_array();
+                Self::from_array(core::array::from_fn(|i| core::intrinsics::fsub_algebraic(a[i], b[i])))
+            }
+
+            #[inline]
+            fn algebraic_mul(self, rhs: Self) -> Self {
+                let a = self.to_array();
+                let b = rhs.to_array();
+                Self::from_array(core::array::from_fn(|i| core::intrinsics::fmul_algebraic(a[i], b[i])))
+            }
+
+            #[inline]
+            fn algebraic_div(self, rhs: Self) -> Self {
+                let a = self.to_array();
+                let b = rhs.to_array();
+                Self::from_array(core::array::from_fn(|i| core::intrinsics::fdiv_algebraic(a[i], b[i])))
+            }
+
+            #[inline]
+            fn algebraic_rem(self, rhs: Self) -> Self {
+                let a = self.to_array();
+                let b = rhs.to_array();
+                Self::from_array(core::array::from_fn(|i| core::intrinsics::frem_algebraic(a[i], b[i])))
+            }
+
+            #[inline]
             fn reduce_sum(self) -> Self::Scalar {
                 // LLVM sum is inaccurate on i586
                 if cfg!(all(target_arch = "x86", not(target_feature = "sse2"))) {
@@ -436,6 +507,7 @@ macro_rules! impl_trait {
             fn reduce_min(self) -> Self::Scalar {
                 self.as_array().iter().copied().fold(Self::Scalar::NAN, Self::Scalar::min)
             }
+
         }
         )*
     }
