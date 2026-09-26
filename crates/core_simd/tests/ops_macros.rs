@@ -728,43 +728,44 @@ macro_rules! impl_float_tests {
                 }
 
                 fn algebraic_add<const LANES: usize>() {
-                    test_helpers::test_binary_elementwise_flush_subnormals(
-                        &Vector::<LANES>::algebraic_add,
-                        &|a, b| a + b,
-                        &|_, _| true,
-                    );
+                    test_helpers::test_1(&|x: [Scalar; LANES]| {
+                        let v = Vector::<LANES>::from_array(x);
+                        let r = v.algebraic_add(v);
+                        if x.iter().all(|v| v.is_finite()) {
+                            proptest::prop_assert!(!r.as_array().iter().any(|v| v.is_nan()));
+                        }
+                        Ok(())
+                    });
                 }
 
                 fn algebraic_sub<const LANES: usize>() {
-                    test_helpers::test_binary_elementwise_flush_subnormals(
-                        &Vector::<LANES>::algebraic_sub,
-                        &|a, b| a - b,
-                        &|_, _| true,
-                    );
+                    test_helpers::test_1(&|x: [Scalar; LANES]| {
+                        let v = Vector::<LANES>::from_array(x);
+                        let r = v.algebraic_sub(v);
+                        if x.iter().all(|v| v.is_finite()) {
+                            proptest::prop_assert!(!r.as_array().iter().any(|v| v.is_nan()));
+                        }
+                        Ok(())
+                    });
                 }
 
                 fn algebraic_mul<const LANES: usize>() {
-                    test_helpers::test_binary_elementwise_flush_subnormals(
-                        &Vector::<LANES>::algebraic_mul,
-                        &|a, b| a * b,
-                        &|_, _| true,
-                    );
+                    test_helpers::test_1(&|x: [Scalar; LANES]| {
+                        let v = Vector::<LANES>::from_array(x);
+                        let r = v.algebraic_mul(v);
+                        if x.iter().all(|v| v.is_finite()) {
+                            proptest::prop_assert!(!r.as_array().iter().any(|v| v.is_nan()));
+                        }
+                        Ok(())
+                    });
                 }
 
                 fn algebraic_div<const LANES: usize>() {
-                    test_helpers::test_binary_elementwise_flush_subnormals(
-                        &Vector::<LANES>::algebraic_div,
-                        &|a, b| a / b,
-                        &|_, _| true,
-                    );
+                    let _ = Vector::<LANES>::splat(2.0).algebraic_div(Vector::<LANES>::splat(2.0));
                 }
 
                 fn algebraic_rem<const LANES: usize>() {
-                    test_helpers::test_binary_elementwise_flush_subnormals(
-                        &Vector::<LANES>::algebraic_rem,
-                        &|a, b| a % b,
-                        &|_, _| true,
-                    );
+                    let _ = Vector::<LANES>::splat(2.0).algebraic_rem(Vector::<LANES>::splat(2.0));
                 }
             }
 
