@@ -800,10 +800,11 @@ macro_rules! impl_float_tests {
 
                 fn algebraic_div<const LANES: usize>() {
                     test_helpers::test_2(&|x: [Scalar; LANES], y: [Scalar; LANES]| {
-                        proptest::prop_assume!(y.iter().all(|v| v.is_finite() && *v != 0.0));
                         let r = Vector::<LANES>::from_array(x).algebraic_div(Vector::<LANES>::from_array(y));
-                        if x.iter().all(|v| v.is_finite()) {
-                            proptest::prop_assert!(!r.as_array().iter().any(|v| v.is_nan()));
+                        for i in 0..LANES {
+                            if x[i].is_finite() && y[i].is_finite() && y[i] != 0.0 {
+                                proptest::prop_assert!(!r.as_array()[i].is_nan());
+                            }
                         }
                         Ok(())
                     });
@@ -825,10 +826,11 @@ macro_rules! impl_float_tests {
 
                 fn algebraic_rem<const LANES: usize>() {
                     test_helpers::test_2(&|x: [Scalar; LANES], y: [Scalar; LANES]| {
-                        proptest::prop_assume!(y.iter().all(|v| v.is_finite() && *v != 0.0));
                         let r = Vector::<LANES>::from_array(x).algebraic_rem(Vector::<LANES>::from_array(y));
-                        if x.iter().all(|v| v.is_finite()) {
-                            proptest::prop_assert!(!r.as_array().iter().any(|v| v.is_nan()));
+                        for i in 0..LANES {
+                            if x[i].is_finite() && y[i].is_finite() && y[i] != 0.0 {
+                                proptest::prop_assert!(!r.as_array()[i].is_nan());
+                            }
                         }
                         Ok(())
                     });
