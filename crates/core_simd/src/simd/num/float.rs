@@ -234,6 +234,41 @@ pub impl(self) trait SimdFloat: Copy {
     /// assert!(v.reduce_min().is_nan());
     /// ```
     fn reduce_min(self) -> Self::Scalar;
+
+    /// Float addition that allows optimizations based on algebraic rules.
+    ///
+    /// See [algebraic operators](https://doc.rust-lang.org/std/primitive.f32.html#algebraic-operators)
+    /// for more info.
+    #[must_use = "method returns a new vector and does not mutate the original value"]
+    fn algebraic_add(self, rhs: Self) -> Self;
+
+    /// Float subtraction that allows optimizations based on algebraic rules.
+    ///
+    /// See [algebraic operators](https://doc.rust-lang.org/std/primitive.f32.html#algebraic-operators)
+    /// for more info.
+    #[must_use = "method returns a new vector and does not mutate the original value"]
+    fn algebraic_sub(self, rhs: Self) -> Self;
+
+    /// Float multiplication that allows optimizations based on algebraic rules.
+    ///
+    /// See [algebraic operators](https://doc.rust-lang.org/std/primitive.f32.html#algebraic-operators)
+    /// for more info.
+    #[must_use = "method returns a new vector and does not mutate the original value"]
+    fn algebraic_mul(self, rhs: Self) -> Self;
+
+    /// Float division that allows optimizations based on algebraic rules.
+    ///
+    /// See [algebraic operators](https://doc.rust-lang.org/std/primitive.f32.html#algebraic-operators)
+    /// for more info.
+    #[must_use = "method returns a new vector and does not mutate the original value"]
+    fn algebraic_div(self, rhs: Self) -> Self;
+
+    /// Float remainder that allows optimizations based on algebraic rules.
+    ///
+    /// See [algebraic operators](https://doc.rust-lang.org/std/primitive.f32.html#algebraic-operators)
+    /// for more info.
+    #[must_use = "method returns a new vector and does not mutate the original value"]
+    fn algebraic_rem(self, rhs: Self) -> Self;
 }
 
 macro_rules! impl_trait {
@@ -404,6 +439,41 @@ macro_rules! impl_trait {
             }
 
             #[inline]
+            fn algebraic_add(self, rhs: Self) -> Self {
+                let a = self.to_array();
+                let b = rhs.to_array();
+                Self::from_array(core::array::from_fn(|i| core::intrinsics::fadd_algebraic(a[i], b[i])))
+            }
+
+            #[inline]
+            fn algebraic_sub(self, rhs: Self) -> Self {
+                let a = self.to_array();
+                let b = rhs.to_array();
+                Self::from_array(core::array::from_fn(|i| core::intrinsics::fsub_algebraic(a[i], b[i])))
+            }
+
+            #[inline]
+            fn algebraic_mul(self, rhs: Self) -> Self {
+                let a = self.to_array();
+                let b = rhs.to_array();
+                Self::from_array(core::array::from_fn(|i| core::intrinsics::fmul_algebraic(a[i], b[i])))
+            }
+
+            #[inline]
+            fn algebraic_div(self, rhs: Self) -> Self {
+                let a = self.to_array();
+                let b = rhs.to_array();
+                Self::from_array(core::array::from_fn(|i| core::intrinsics::fdiv_algebraic(a[i], b[i])))
+            }
+
+            #[inline]
+            fn algebraic_rem(self, rhs: Self) -> Self {
+                let a = self.to_array();
+                let b = rhs.to_array();
+                Self::from_array(core::array::from_fn(|i| core::intrinsics::frem_algebraic(a[i], b[i])))
+            }
+
+            #[inline]
             fn reduce_sum(self) -> Self::Scalar {
                 // LLVM sum is inaccurate on i586
                 if cfg!(all(target_arch = "x86", not(target_feature = "sse2"))) {
@@ -436,9 +506,77 @@ macro_rules! impl_trait {
             fn reduce_min(self) -> Self::Scalar {
                 self.as_array().iter().copied().fold(Self::Scalar::NAN, Self::Scalar::min)
             }
+
         }
         )*
     }
 }
 
-impl_trait! { f16 { bits: u16, mask: i16 }, f32 { bits: u32, mask: i32 }, f64 { bits: u64, mask: i64 } }
+impl_trait! {
+    f16 { bits: u16, mask: i16 },
+    f32 { bits: u32, mask: i32 },
+    f64 { bits: u64, mask: i64 }
+}
+
+macro_rules! impl_algebraic_reduce {
+    ($ty:ty) => {
+        impl<const N: usize> Simd<$ty, N> {
+            /// Returns the sum of the elements of the vector, allowing the compiler to reorder operations.
+            ///
+            /// The result may differ from [`SimdFloat::reduce_sum`] due to rounding.
+            /// If all elements are finite, the result will be finite (no NaN is introduced).
+            ///
+            /// # Examples
+            ///
+            /// ```
+            /// # #![feature(portable_simd)]
+            /// # #[cfg(feature = "as_crate")] use core_simd::simd;
+            /// # #[cfg(not(feature = "as_crate"))] use core::simd;
+            /// # use simd::prelude::*;
+            /// let v = f32x4::from_array([1., 2., 3., 4.]);
+            /// assert_eq!(v.algebraic_reduce_sum(), 10.);
+            /// ```
+            #[inline]
+            pub fn algebraic_reduce_sum(self) -> $ty {
+                // On x86 without SSE2 (i586), x87's 80-bit extended precision causes LLVM's
+                // vector.reduce.fadd to deviate from IEEE 754 for f32/f64.
+                // Workaround originally introduced in commit 64f56486 for `reduce_sum`/`reduce_product`.
+                if cfg!(all(target_arch = "x86", not(target_feature = "sse2"))) {
+                    self.as_array().iter().sum()
+                } else {
+                    // Safety: `self` is a float vector
+                    unsafe { core::intrinsics::simd::simd_reduce_add_unordered(self) }
+                }
+            }
+
+            /// Returns the product of the elements of the vector, allowing the compiler to reorder operations.
+            ///
+            /// The result may differ from [`SimdFloat::reduce_product`] due to rounding.
+            /// If all elements are finite, the result will be finite (no NaN is introduced).
+            ///
+            /// # Examples
+            ///
+            /// ```
+            /// # #![feature(portable_simd)]
+            /// # #[cfg(feature = "as_crate")] use core_simd::simd;
+            /// # #[cfg(not(feature = "as_crate"))] use core::simd;
+            /// # use simd::prelude::*;
+            /// let v = f32x4::from_array([1., 2., 3., 4.]);
+            /// assert_eq!(v.algebraic_reduce_product(), 24.);
+            /// ```
+            #[inline]
+            pub fn algebraic_reduce_product(self) -> $ty {
+                // Same i586/x87 issue as `algebraic_reduce_sum`.
+                if cfg!(all(target_arch = "x86", not(target_feature = "sse2"))) {
+                    self.as_array().iter().product()
+                } else {
+                    // Safety: `self` is a float vector
+                    unsafe { core::intrinsics::simd::simd_reduce_mul_unordered(self) }
+                }
+            }
+        }
+    };
+}
+
+impl_algebraic_reduce!(f32);
+impl_algebraic_reduce!(f64);

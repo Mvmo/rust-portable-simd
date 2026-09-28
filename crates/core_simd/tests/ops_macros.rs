@@ -726,6 +726,174 @@ macro_rules! impl_float_tests {
                         Ok(())
                     });
                 }
+
+                fn algebraic_add<const LANES: usize>() {
+                    test_helpers::test_2(&|x: [Scalar; LANES], y: [Scalar; LANES]| {
+                        let r = Vector::<LANES>::from_array(x).algebraic_add(Vector::<LANES>::from_array(y));
+                        // Miri models algebraic ops as non-deterministic (no nnan flag),
+                        // so NaN-freedom assertions are skipped there.
+                        if !cfg!(miri) && x.iter().chain(y.iter()).all(|v| v.is_finite()) {
+                            proptest::prop_assert!(!r.as_array().iter().any(|v| v.is_nan()));
+                        }
+                        Ok(())
+                    });
+
+                    let zero = Vector::<LANES>::splat(0.0);
+                    let one = Vector::<LANES>::splat(1.0);
+                    let neg_one = Vector::<LANES>::splat(-1.0);
+                    let max = Vector::<LANES>::splat(Scalar::MAX);
+                    let min = Vector::<LANES>::splat(Scalar::MIN);
+
+                    // Always execute so Miri can check for UB; only assert NaN-freedom outside Miri.
+                    let r0 = max.algebraic_add(zero);
+                    let r1 = min.algebraic_add(zero);
+                    let r2 = max.algebraic_add(one);
+                    let r3 = min.algebraic_add(neg_one);
+                    let r4 = max.algebraic_add(max);
+                    let r5 = min.algebraic_add(min);
+                    let r6 = one.algebraic_add(neg_one);
+                    if !cfg!(miri) {
+                        assert!(!r0.as_array().iter().any(|v| v.is_nan()));
+                        assert!(!r1.as_array().iter().any(|v| v.is_nan()));
+                        assert!(!r2.as_array().iter().any(|v| v.is_nan()));
+                        assert!(!r3.as_array().iter().any(|v| v.is_nan()));
+                        assert!(!r4.as_array().iter().any(|v| v.is_nan()));
+                        assert!(!r5.as_array().iter().any(|v| v.is_nan()));
+                        assert!(!r6.as_array().iter().any(|v| v.is_nan()));
+                    }
+                }
+
+                fn algebraic_sub<const LANES: usize>() {
+                    test_helpers::test_2(&|x: [Scalar; LANES], y: [Scalar; LANES]| {
+                        let r = Vector::<LANES>::from_array(x).algebraic_sub(Vector::<LANES>::from_array(y));
+                        if !cfg!(miri) && x.iter().chain(y.iter()).all(|v| v.is_finite()) {
+                            proptest::prop_assert!(!r.as_array().iter().any(|v| v.is_nan()));
+                        }
+                        Ok(())
+                    });
+
+                    let zero = Vector::<LANES>::splat(0.0);
+                    let one = Vector::<LANES>::splat(1.0);
+                    let neg_one = Vector::<LANES>::splat(-1.0);
+                    let max = Vector::<LANES>::splat(Scalar::MAX);
+                    let min = Vector::<LANES>::splat(Scalar::MIN);
+
+                    let r0 = max.algebraic_sub(zero);
+                    let r1 = min.algebraic_sub(zero);
+                    let r2 = max.algebraic_sub(one);
+                    let r3 = min.algebraic_sub(neg_one);
+                    let r4 = max.algebraic_sub(min);
+                    let r5 = one.algebraic_sub(neg_one);
+                    if !cfg!(miri) {
+                        assert!(!r0.as_array().iter().any(|v| v.is_nan()));
+                        assert!(!r1.as_array().iter().any(|v| v.is_nan()));
+                        assert!(!r2.as_array().iter().any(|v| v.is_nan()));
+                        assert!(!r3.as_array().iter().any(|v| v.is_nan()));
+                        assert!(!r4.as_array().iter().any(|v| v.is_nan()));
+                        assert!(!r5.as_array().iter().any(|v| v.is_nan()));
+                    }
+                }
+
+                fn algebraic_mul<const LANES: usize>() {
+                    test_helpers::test_2(&|x: [Scalar; LANES], y: [Scalar; LANES]| {
+                        let r = Vector::<LANES>::from_array(x).algebraic_mul(Vector::<LANES>::from_array(y));
+                        if !cfg!(miri) && x.iter().chain(y.iter()).all(|v| v.is_finite()) {
+                            proptest::prop_assert!(!r.as_array().iter().any(|v| v.is_nan()));
+                        }
+                        Ok(())
+                    });
+
+                    let zero = Vector::<LANES>::splat(0.0);
+                    let one = Vector::<LANES>::splat(1.0);
+                    let neg_one = Vector::<LANES>::splat(-1.0);
+                    let max = Vector::<LANES>::splat(Scalar::MAX);
+                    let min = Vector::<LANES>::splat(Scalar::MIN);
+
+                    let r0 = max.algebraic_mul(one);
+                    let r1 = max.algebraic_mul(neg_one);
+                    let r2 = max.algebraic_mul(zero);
+                    let r3 = min.algebraic_mul(one);
+                    let r4 = min.algebraic_mul(neg_one);
+                    let r5 = max.algebraic_mul(max);
+                    let r6 = zero.algebraic_mul(zero);
+                    if !cfg!(miri) {
+                        assert!(!r0.as_array().iter().any(|v| v.is_nan()));
+                        assert!(!r1.as_array().iter().any(|v| v.is_nan()));
+                        assert!(!r2.as_array().iter().any(|v| v.is_nan()));
+                        assert!(!r3.as_array().iter().any(|v| v.is_nan()));
+                        assert!(!r4.as_array().iter().any(|v| v.is_nan()));
+                        assert!(!r5.as_array().iter().any(|v| v.is_nan()));
+                        assert!(!r6.as_array().iter().any(|v| v.is_nan()));
+                    }
+                }
+
+                fn algebraic_div<const LANES: usize>() {
+                    test_helpers::test_2(&|x: [Scalar; LANES], y: [Scalar; LANES]| {
+                        let r = Vector::<LANES>::from_array(x).algebraic_div(Vector::<LANES>::from_array(y));
+                        if !cfg!(miri) {
+                            for i in 0..LANES {
+                                if x[i].is_finite() && y[i].is_finite() && y[i] != 0.0 {
+                                    proptest::prop_assert!(!r.as_array()[i].is_nan());
+                                }
+                            }
+                        }
+                        Ok(())
+                    });
+
+                    let zero = Vector::<LANES>::splat(0.0);
+                    let one = Vector::<LANES>::splat(1.0);
+                    let neg_one = Vector::<LANES>::splat(-1.0);
+                    let max = Vector::<LANES>::splat(Scalar::MAX);
+                    let min = Vector::<LANES>::splat(Scalar::MIN);
+
+                    let r0 = max.algebraic_div(one);
+                    let r1 = max.algebraic_div(neg_one);
+                    let r2 = min.algebraic_div(one);
+                    let r3 = min.algebraic_div(neg_one);
+                    let r4 = zero.algebraic_div(one);
+                    let r5 = zero.algebraic_div(max);
+                    let r6 = one.algebraic_div(max);
+                    if !cfg!(miri) {
+                        assert!(!r0.as_array().iter().any(|v| v.is_nan()));
+                        assert!(!r1.as_array().iter().any(|v| v.is_nan()));
+                        assert!(!r2.as_array().iter().any(|v| v.is_nan()));
+                        assert!(!r3.as_array().iter().any(|v| v.is_nan()));
+                        assert!(!r4.as_array().iter().any(|v| v.is_nan()));
+                        assert!(!r5.as_array().iter().any(|v| v.is_nan()));
+                        assert!(!r6.as_array().iter().any(|v| v.is_nan()));
+                    }
+                }
+
+                fn algebraic_rem<const LANES: usize>() {
+                    test_helpers::test_2(&|x: [Scalar; LANES], y: [Scalar; LANES]| {
+                        let r = Vector::<LANES>::from_array(x).algebraic_rem(Vector::<LANES>::from_array(y));
+                        if !cfg!(miri) {
+                            for i in 0..LANES {
+                                if x[i].is_finite() && y[i].is_finite() && y[i] != 0.0 {
+                                    proptest::prop_assert!(!r.as_array()[i].is_nan());
+                                }
+                            }
+                        }
+                        Ok(())
+                    });
+
+                    let one = Vector::<LANES>::splat(1.0);
+                    let neg_one = Vector::<LANES>::splat(-1.0);
+                    let max = Vector::<LANES>::splat(Scalar::MAX);
+                    let min = Vector::<LANES>::splat(Scalar::MIN);
+
+                    let r0 = max.algebraic_rem(one);
+                    let r1 = min.algebraic_rem(one);
+                    let r2 = max.algebraic_rem(neg_one);
+                    let r3 = one.algebraic_rem(max);
+                    if !cfg!(miri) {
+                        assert!(!r0.as_array().iter().any(|v| v.is_nan()));
+                        assert!(!r1.as_array().iter().any(|v| v.is_nan()));
+                        assert!(!r2.as_array().iter().any(|v| v.is_nan()));
+                        assert!(!r3.as_array().iter().any(|v| v.is_nan()));
+                    }
+                }
+
             }
 
             #[cfg(feature = "std")]
